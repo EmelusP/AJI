@@ -1,0 +1,9 @@
+body {
+    margin: 0;
+    font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+    color: rgb(100, 100, 100);
+}
+
+h1 {
+    color: rgb(17, 17, 17);
+}
