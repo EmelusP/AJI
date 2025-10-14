@@ -1,4 +1,12 @@
-* { box-sizing: border-box; }
+/*
+Grupa D
+Bartosz Dziuba
+Emil Piechała
+*/
+
+* {
+    box-sizing: border-box;
+}
 
 html, body { height: 100%; }
 
@@ -66,16 +74,6 @@ main { padding: 2rem 1rem 4rem; }
     transform: translateX(-50%) scale(1.6);
     transform-origin: bottom center;
     z-index: 2;
-}
-
-.cien {
-    position: absolute;
-    left: 80px;
-    right: 80px;
-    bottom: 0;
-    height: 6px;
-    background: rgb(120, 120, 120);
-    border-radius: 50px;
 }
 
 .karoseria {
