@@ -8,31 +8,9 @@ Emil Piechała
     box-sizing: border-box;
 }
 
-html, body { height: 100%; }
-
-body {
-    margin: 0;
-    font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Arial, "Apple Color Emoji", "Segoe UI Emoji";
-    color: rgb(17, 17, 17);
-}
-
-.visually-hidden {
-    position: absolute !important;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    white-space: nowrap;
-    border: 0;
-}
-
-main { padding: 2rem 1rem 4rem; }
-
 .scena {
     width: 900px;
     height: 440px;
-    margin: 3rem auto 1rem;
     position: relative;
 }
 
@@ -73,7 +51,6 @@ main { padding: 2rem 1rem 4rem; }
     height: 160px;
     transform: translateX(-50%) scale(1.6);
     transform-origin: bottom center;
-    z-index: 2;
 }
 
 .karoseria {
@@ -268,5 +245,4 @@ main { padding: 2rem 1rem 4rem; }
 }
 
 .kreska { display: none; }
-
 
