@@ -249,3 +249,25 @@ main { padding: 2rem 1rem 4rem; }
     transform: rotate(-70deg);
 }
 
+
+
+
+@keyframes ruch-drogi {
+    from {
+        background-position-x: 0;
+    }
+    to {
+        background-position-x: -140px;
+    }
+}
+
+.linia_srodkowa {
+    background-image: repeating-linear-gradient(90deg, white, white 70px, transparent 70px, transparent 140px);
+    background-size: 140px 6px;
+    background-repeat: repeat-x;
+    animation: ruch-drogi 0.8s linear infinite;
+    display: block;
+}
+
+.kreska { display: none; }
+
