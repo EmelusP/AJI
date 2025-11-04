@@ -54,7 +54,7 @@ window.onload = function() {
 };
 
 async function getCategoryFromGroq(title, description) {
-    const GROQ_API_KEY ="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";
+    const GROQ_API_KEY ="Klucz";
 
     const systemPrompt = `Jesteś ekspertem od kategoryzacji zadań. Twoim zadaniem jest przypisanie JEDNEGO słowa jako kategorii dla zadania na podstawie tytułu i opisu.
 
