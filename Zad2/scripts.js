@@ -1,33 +1,6 @@
 "use strict"
 let todoList = []; //declares a new array for Your todo list
 
-/*
-let initList = function() {
-    let savedList = window.localStorage.getItem("todos");
-    if (savedList != null)
-        todoList = JSON.parse(savedList);
-    else
-    //code creating a default list with 2 items
-
-    todoList.push(
-        {
-            title: "Learn JS",
-            description: "Create a demo application for my TODO's",
-            place: "445",
-            category: '',
-            dueDate: new Date(2024,10,16)
-        },
-        {
-            title: "Lecture test",
-            description: "Quick test from the first three lectures",
-            place: "F6",
-            category: '',
-            dueDate: new Date(2024,10,17)
-        }
-    );
-}
-initList();
-*/
 window.onload = function() {
     // attach live filters
     const search = document.getElementById("inputSearch");
@@ -40,11 +13,12 @@ window.onload = function() {
     // basic live validation for title
     const inputTitle = document.getElementById("inputTitle");
     if (inputTitle) {
-        const validationSpan = inputTitle.nextElementSibling;
+        const validationMsg = document.getElementById('titleValidation');
 
         inputTitle.addEventListener('input', () => {
-            if (inputTitle.value && validationSpan) {
-                validationSpan.style.display = 'none';
+            if (inputTitle.value && validationMsg) {
+                validationMsg.classList.add('d-none');
+                validationMsg.style.display = 'none';
             }
         });
     }
@@ -54,7 +28,7 @@ window.onload = function() {
 };
 
 async function getCategoryFromGroq(title, description) {
-    const GROQ_API_KEY ="Kluczz";
+    const GROQ_API_KEY ="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";
 
     const systemPrompt = `Jesteś ekspertem od kategoryzacji zadań. Twoim zadaniem jest przypisanie JEDNEGO słowa jako kategorii dla zadania na podstawie tytułu i opisu.
 
@@ -111,7 +85,6 @@ let loadBin = function() {
         if (req.readyState === XMLHttpRequest.DONE && req.status === 200) {
             let response = JSON.parse(req.responseText);
             todoList = response.record;
-            window.localStorage.setItem("todos", JSON.stringify(todoList));
             updateTodoList();
         }
     };
@@ -147,14 +120,14 @@ let updateTodoList = function() {
     });
 
     let html = "";
-    html += '<table>';
-    html += '<thead><tr>' +
+    html += '<table class="table table-striped table-bordered align-middle">';
+    html += '<thead class="table-light"><tr>' +
         '<th scope="col">Tytuł</th>' +
         '<th scope="col">Opis</th>' +
         '<th scope="col">Miejsce</th>' +
         '<th scope="col">Termin</th>' +
         '<th scope="col">Kategoria</th>' +
-        '<th scope="col" style="text-align: end;">Akcje</th>' +
+        '<th scope="col" class="text-end">Akcje</th>' +
         '</tr></thead><tbody>';
 
     const today = new Date();
@@ -165,29 +138,31 @@ let updateTodoList = function() {
         const dueDisp = item.dueDate ? new Date(item.dueDate).toLocaleDateString() : "-";
         const cat = item.category && item.category !== '' ? item.category : '-';
 
-        let badgeStyle = "padding: .25em .6em; font-size: .75em; font-weight: 700; border-radius: .375rem; color: #000; background-color: #ffc107;"; // Domyślny (warning)
-        if (cat.toLowerCase() === 'uczelnia') {
-            badgeStyle = "padding: .25em .6em; font-size: .75em; font-weight: 700; border-radius: .375rem; color: #fff; background-color: #0d6efd;"; // Primary
-        } else if (cat.toLowerCase() === 'prywatne') {
-            badgeStyle = "padding: .25em .6em; font-size: .75em; font-weight: 700; border-radius: .375rem; color: #fff; background-color: #198754;"; // Success
-        }
+        const badgeClass = `badge ${categoryBadgeClass(cat)}`;
+        // Fallback inline dla badge (gdy Bootstrap CSS niedostępny)
+        let badgeStyle = "padding:.25em .6em;font-size:.75em;font-weight:700;border-radius:.375rem;";
+        const catLower = (cat || '').toString().toLowerCase();
+        if (catLower === 'uczelnia') badgeStyle += 'color:#fff;background-color:#0d6efd;';
+        else if (catLower === 'prywatne') badgeStyle += 'color:#fff;background-color:#198754;';
+        else badgeStyle += 'color:#000;background-color:#ffc107;';
 
-        // Style inline dla wierszy (zamiast klas table-danger/warning)
+        // Klasy wierszy (Bootstrap) + fallback inline
+        let rowClass = '';
         let rowStyle = '';
         if (item.dueDate) {
             const due = new Date(item.dueDate); due.setHours(0,0,0,0);
             const diff = (due - today) / (1000*60*60*24);
-            if (diff < 0) rowStyle = 'background-color: #f8d7da;'; // danger
-            else if (diff < 1) rowStyle = 'background-color: #fff3cd;'; // warning
+            if (diff < 0) { rowClass = 'table-danger'; rowStyle = 'background-color:#f8d7da;'; }
+            else if (diff < 1) { rowClass = 'table-warning'; rowStyle = 'background-color:#fff3cd;'; }
         }
 
-        html += `<tr style="${rowStyle}">` +
+        html += `<tr class="${rowClass}" style="${rowStyle}">` +
             `<td>${escapeHtml(item.title || '')}</td>` +
             `<td>${escapeHtml(item.description || '')}</td>` +
             `<td>${escapeHtml(item.place || '')}</td>` +
             `<td>${escapeHtml(dueDisp)}</td>` +
-            `<td><span style="${badgeStyle}">${escapeHtml(cat)}</span></td>` +
-            `<td style="text-align: end;"><button class="usun_btn" data-del="${originalIndex}">Usuń</button></td>` +
+            `<td><span class="${badgeClass}" style="${badgeStyle}">${escapeHtml(cat)}</span></td>` +
+            `<td class="text-end" style="text-align:end;"><button class="btn btn-danger btn-sm" style="background:#dc3545;color:#fff;border:none;padding:.35rem .6rem;border-radius:.375rem;" data-del="${originalIndex}">Usuń</button></td>` +
             '</tr>';
     });
     html += '</tbody></table>';
@@ -208,13 +183,13 @@ let updateTodoList = function() {
 
     const empty = document.getElementById('pusta_lista');
     if (empty) {
-        empty.style.display = filtered.length === 0 ? 'block' : 'none';
+        if (filtered.length === 0) empty.classList.remove('d-none');
+        else empty.classList.add('d-none');
     }
 }
 
 let deleteTodo = function(index) {
     todoList.splice(index,1);
-    window.localStorage.setItem("todos", JSON.stringify(todoList));
     updateJSONbin();
     updateTodoList();
 }
@@ -226,8 +201,8 @@ let addTodo = async function() {
     let inputPlace = document.getElementById("inputPlace");
     let inputDate = document.getElementById("inputDate");
 
-    // Znajdź span walidacyjny
-    const validationSpan = inputTitle.nextElementSibling;
+    // Znajdź element walidacyjny
+    const validationMsg = document.getElementById('titleValidation');
 
     //get the values from the form
     let newTitle = inputTitle.value;
@@ -237,11 +212,11 @@ let addTodo = async function() {
 
     // validate title
     if (!newTitle || newTitle.trim() === '') {
-        if (validationSpan) validationSpan.style.display = 'block'; // Pokaż błąd
+        if (validationMsg) { validationMsg.classList.remove('d-none'); validationMsg.style.display = 'block'; } // Pokaż błąd
         inputTitle.focus();
         return;
     }
-    if (validationSpan) validationSpan.style.display = 'none'; // Ukryj błąd
+    if (validationMsg) { validationMsg.classList.add('d-none'); validationMsg.style.display = 'none'; } // Ukryj błąd
 
     // --- INTEGRACJA GROQ ---
     let newCategory = await getCategoryFromGroq(newTitle, newDescription);
@@ -258,7 +233,6 @@ let addTodo = async function() {
     //add item to the list
     todoList.push(newTodo);
 
-    window.localStorage.setItem("todos", JSON.stringify(todoList));
     updateJSONbin();
 
     // clear form
