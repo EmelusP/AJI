@@ -65,7 +65,6 @@ Nie dodawaj żadnych wyjaśnień, kropek ani cudzysłowów.`;
         const data = await response.json();
         let category = data.choices?.[0]?.message?.content?.trim() ?? "Inne2";
 
-        // Oczyszczanie odpowiedzi do jednego słowa
         category = category.split(/\s+/)[0].replace(/["'.]/g, "");
         if (category.length > 0) {
             category = category.charAt(0).toUpperCase() + category.slice(1).toLowerCase();
@@ -139,14 +138,14 @@ let updateTodoList = function() {
         const cat = item.category && item.category !== '' ? item.category : '-';
 
         const badgeClass = `badge ${categoryBadgeClass(cat)}`;
-        // Fallback inline dla badge (gdy Bootstrap CSS niedostępny)
+        // Fallback inline for badge (Bootstrap CSS not available)
         let badgeStyle = "padding:.25em .6em;font-size:.75em;font-weight:700;border-radius:.375rem;";
         const catLower = (cat || '').toString().toLowerCase();
         if (catLower === 'uczelnia') badgeStyle += 'color:#fff;background-color:#0d6efd;';
         else if (catLower === 'prywatne') badgeStyle += 'color:#fff;background-color:#198754;';
         else badgeStyle += 'color:#000;background-color:#ffc107;';
 
-        // Klasy wierszy (Bootstrap) + fallback inline
+        // Row classes (Bootstrap) + fallback inline
         let rowClass = '';
         let rowStyle = '';
         if (item.dueDate) {
@@ -201,7 +200,7 @@ let addTodo = async function() {
     let inputPlace = document.getElementById("inputPlace");
     let inputDate = document.getElementById("inputDate");
 
-    // Znajdź element walidacyjny
+    // Find validation element
     const validationMsg = document.getElementById('titleValidation');
 
     //get the values from the form
@@ -212,22 +211,21 @@ let addTodo = async function() {
 
     // validate title
     if (!newTitle || newTitle.trim() === '') {
-        if (validationMsg) { validationMsg.classList.remove('d-none'); validationMsg.style.display = 'block'; } // Pokaż błąd
+        if (validationMsg) { validationMsg.classList.remove('d-none'); validationMsg.style.display = 'block'; }
         inputTitle.focus();
         return;
     }
-    if (validationMsg) { validationMsg.classList.add('d-none'); validationMsg.style.display = 'none'; } // Ukryj błąd
+    if (validationMsg) { validationMsg.classList.add('d-none'); validationMsg.style.display = 'none'; }
 
-    // --- INTEGRACJA GROQ ---
+    //intrgration with groq
     let newCategory = await getCategoryFromGroq(newTitle, newDescription);
-    // -----------------------
 
     //create new item
     let newTodo = {
         title: newTitle,
         description: newDescription,
         place: newPlace,
-        category: newCategory, // Użyj kategorii z Groq
+        category: newCategory,
         dueDate: newDate
     };
     //add item to the list
@@ -241,7 +239,7 @@ let addTodo = async function() {
     inputPlace.value = '';
     inputDate.value = '';
 
-    updateTodoList(); // Odśwież listę po dodaniu
+    updateTodoList();
 }
 // Provide Polish alias used by onsubmit handler in index.html
 function dodajZadanie() {
