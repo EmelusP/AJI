@@ -67,7 +67,8 @@ let loadBin = function() {
 }
 
 let updateTodoList = function() {
-    const tableContainer = document.getElementById("todoTableView");
+    // Match IDs used in index.html (Polish)
+    const tableContainer = document.getElementById("tabela_zadan");
     if (!tableContainer) return;
 
     const filterText = (document.getElementById("inputSearch")?.value || "").toLowerCase();
@@ -135,9 +136,9 @@ let updateTodoList = function() {
     });
 
     // update summary and empty state
-    const summary = document.getElementById('summary');
+    const summary = document.getElementById('podsumowanie');
     if (summary) summary.textContent = `Shown ${filtered.length} of ${todoList.length}`;
-    const empty = document.getElementById('emptyState');
+    const empty = document.getElementById('pusta_lista');
     if (empty) empty.classList.toggle('d-none', filtered.length !== 0);
 }
 
@@ -189,6 +190,11 @@ let addTodo = async function() {
     inputDate.value = '';
     inputTitle.classList.remove('is-invalid');
     updateTodoList();
+}
+
+// Provide Polish alias used by onsubmit handler in index.html
+function dodajZadanie() {
+    return addTodo();
 }
 
 let updateJSONbin = function() {
