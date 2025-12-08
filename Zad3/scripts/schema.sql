@@ -67,6 +67,14 @@ CREATE TABLE dbo.order_items (
   CONSTRAINT fk_items_product FOREIGN KEY (product_id) REFERENCES dbo.products(id)
 );
 
+-- Użytkownicy (do uwierzytelniania JWT)
+CREATE TABLE dbo.users (
+  id INT IDENTITY(1,1) PRIMARY KEY,
+  username NVARCHAR(50) NOT NULL UNIQUE,
+  password_hash NVARCHAR(255) NOT NULL,
+  role NVARCHAR(20) NOT NULL CHECK (role IN ('KLIENT', 'PRACOWNIK'))
+);
+
 -- Wstawienie statusów (NIEZATWIERDZONE, ZATWIERDZONE, ANULOWANE, ZREALIZOWANE)
 INSERT INTO dbo.order_statuses (id, name) VALUES
   (1, N'PENDING'),

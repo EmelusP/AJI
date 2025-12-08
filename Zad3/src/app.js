@@ -11,10 +11,22 @@ const app = express();
 app.use(express.json({ limit: '1mb' }));
 
 // Rejestracja tras API
+app.use('/', require('./api/auth')); // /login, /refresh
+
+const { authenticateToken, requireRole } = require('./common/middleware');
+
 app.use('/categories', require('./api/categories'));
 app.use('/status', require('./api/statuses'));
-app.use('/products', require('./api/products'));
-app.use('/products', require('./api/seo'));
+
+// Publiczny odczyt produktów, ale zabezpieczony zapis
+app.use('/products', (req, res, next) => {
+  if (req.method === 'POST' || req.method === 'PUT') {
+    return authenticateToken(req, res, next);
+  }
+  next();
+}, require('./api/products'));
+
+app.use('/products', require('./api/seo')); // SEO description
 app.use('/orders', require('./api/orders'));
 
 // Health
