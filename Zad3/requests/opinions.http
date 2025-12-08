@@ -1,0 +1,84 @@
+# Używa zmiennej {{base}} zdefiniowanej w http-client.env.json (środowisko `local`).
+
+### 0. TEMPORARY: Run Migration (Create Table)
+GET {{base}}/migrate-d4
+
+### 1. Login as Client (Jan)
+POST {{base}}/login
+Content-Type: application/json
+
+{
+  "username": "jan_nowak",
+  "password": "client123"
+}
+
+> {%
+  client.global.set("clientToken", response.body.accessToken);
+%}
+
+### 2. Login as Employee (Admin)
+POST {{base}}/login
+Content-Type: application/json
+
+{
+  "username": "admin_sklepu",
+  "password": "employee123"
+}
+
+> {%
+  client.global.set("empToken", response.body.accessToken);
+%}
+
+### 3. Create Order (Jan) - Starts as CONFIRMED
+POST {{base}}/orders
+Content-Type: application/json
+Authorization: Bearer {{clientToken}}
+
+{
+  "user_name": "jan_nowak",
+  "email": "jan@example.com",
+  "phone": "999888777",
+  "approved_at": "2025-01-01T12:00:00Z",
+  "items": [
+    { "product_id": 1, "quantity": 1 }
+  ]
+}
+
+> {%
+  client.global.set("orderId", response.body.id);
+  client.log("Order Created with ID: " + response.body.id);
+%}
+
+### 4. Admin fulfills order
+PATCH {{base}}/orders/{{orderId}}
+Content-Type: application/json
+
+{
+  "status_id": 4
+}
+
+### 5. Add Opinion (Valid)
+POST {{base}}/orders/{{orderId}}/opinions
+Content-Type: application/json
+Authorization: Bearer {{clientToken}}
+
+{
+  "rating": 5,
+  "content": "Udany zakup, polecam!"
+}
+
+### 6. Get Opinions
+GET {{base}}/orders/{{orderId}}/opinions
+
+### 7. Get Order Details (includes opinions)
+GET {{base}}/orders/{{orderId}}
+
+### 8. Add Order with invalid rating (Fail 400)
+POST {{base}}/orders/{{orderId}}/opinions
+Content-Type: application/json
+Authorization: Bearer {{clientToken}}
+
+{
+  "rating": 6,
+  "content": "Scale goes to 11"
+}

@@ -75,6 +75,16 @@ CREATE TABLE dbo.users (
   role NVARCHAR(20) NOT NULL CHECK (role IN ('KLIENT', 'PRACOWNIK'))
 );
 
+-- Opinie do zamówień (D4)
+CREATE TABLE dbo.order_opinions (
+  id INT IDENTITY(1,1) PRIMARY KEY,
+  order_id INT NOT NULL,
+  rating INT NOT NULL CHECK (rating >= 1 AND rating <= 5),
+  content NVARCHAR(MAX),
+  created_at DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
+  CONSTRAINT fk_opinions_order FOREIGN KEY (order_id) REFERENCES dbo.orders(id) ON DELETE CASCADE
+);
+
 -- Wstawienie statusów (NIEZATWIERDZONE, ZATWIERDZONE, ANULOWANE, ZREALIZOWANE)
 INSERT INTO dbo.order_statuses (id, name) VALUES
   (1, N'PENDING'),

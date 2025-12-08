@@ -3,20 +3,30 @@ const express = require('express');
 const { getPool, sql } = require('../common/db');
 const { StatusCodes, sendError } = require('../common/http');
 const { idParamSchema, orderCreateSchema, orderStatusUpdateSchema } = require('../common/validation');
+const { authenticateToken } = require('../common/middleware');
 const { canTransition } = require('../common/statusTransitions');
 
 const router = express.Router();
 
-// Pomocniczo: pobiera nagłówek zamówienia oraz pozycje
+// Pomocniczo: pobiera nagłówek zamówienia, pozycje oraz opinie
 async function fetchOrder(pool, id) {
   const header = await pool.request().input('id', sql.Int, id)
     .query(`SELECT o.id, o.approved_at, o.status_id, s.name AS status_name, o.user_name, o.email, o.phone, o.created_at
             FROM dbo.orders o JOIN dbo.order_statuses s ON s.id=o.status_id WHERE o.id=@id`);
   if (header.recordset.length === 0) return null;
+
   const items = await pool.request().input('id', sql.Int, id)
     .query(`SELECT oi.id, oi.product_id, p.name AS product_name, oi.quantity, oi.unit_price, oi.vat, oi.discount
             FROM dbo.order_items oi JOIN dbo.products p ON p.id=oi.product_id WHERE oi.order_id=@id ORDER BY oi.id`);
-  return { ...header.recordset[0], items: items.recordset };
+
+  const opinions = await pool.request().input('id', sql.Int, id)
+    .query(`SELECT id, rating, content, created_at FROM dbo.order_opinions WHERE order_id=@id`);
+
+  return {
+    ...header.recordset[0],
+    items: items.recordset,
+    opinions: opinions.recordset
+  };
 }
 
 // GET /orders – lista nagłówków zamówień (bez pozycji)
@@ -34,7 +44,7 @@ router.get('/', async (req, res) => {
   }
 });
 
-// GET /orders/:id – pełne zamówienie z pozycjami
+// GET /orders/:id – pełne zamówienie z pozycjami i opiniami
 router.get('/:id', async (req, res) => {
   const { error, value } = idParamSchema.validate(req.params.id);
   if (error) return sendError(res, StatusCodes.BAD_REQUEST, 'Invalid order id');
@@ -81,8 +91,6 @@ router.get('/status/:statusId', async (req, res) => {
 });
 
 // POST /orders – utworzenie nowego zamówienia
-// Waliduje: dane użytkownika, istnienie produktów, dodatnie ilości.
-// Ceny pozycji kopiowane są z bieżącej ceny produktu. Operacja w transakcji.
 router.post('/', async (req, res) => {
   const { error, value } = orderCreateSchema.validate(req.body);
   if (error) return sendError(res, StatusCodes.BAD_REQUEST, 'Invalid order data', error.details);
@@ -98,7 +106,6 @@ router.post('/', async (req, res) => {
       // Walidacja produktów i pobranie bieżących cen (mapa id -> cena)
       const productIds = items.map(i => i.product_id);
       const uniqueIds = [...new Set(productIds)];
-      // Build IN clause safely
       if (uniqueIds.length === 0) throw new Error('No items');
       const inParams = uniqueIds.map((_, idx) => `@p${idx}`).join(',');
       const reqWithParams = uniqueIds.reduce((r, id, idx) => r.input(`p${idx}`, sql.Int, id), new sql.Request(tx));
@@ -109,10 +116,8 @@ router.post('/', async (req, res) => {
         if (!Number.isInteger(it.quantity) || it.quantity <= 0) throw new Error(`Invalid quantity for product ${it.product_id}`);
       }
 
-      // Status początkowy: 1 (PENDING). Jeżeli approved_at jest podane, ustaw 2 (CONFIRMED).
       const status_id = approved_at ? 2 : 1;
 
-      // Wstawienie nagłówka zamówienia
       const headerRes = await request
         .input('approved_at', approved_at ? sql.DateTime : sql.VarChar, approved_at)
         .input('status_id', sql.Int, status_id)
@@ -123,7 +128,6 @@ router.post('/', async (req, res) => {
                 OUTPUT INSERTED.id VALUES (@approved_at, @status_id, @user_name, @email, @phone)`);
       const orderId = headerRes.recordset[0].id;
 
-      // Wstawianie pozycji zamówienia z ceną z produktu jako unit_price
       for (const it of items) {
         const unitPrice = priceMap.get(it.product_id);
         const reqItem = new sql.Request(tx);
@@ -138,10 +142,10 @@ router.post('/', async (req, res) => {
                   VALUES (@order_id, @product_id, @quantity, @unit_price, @vat, @discount)`);
       }
 
-      await tx.commit(); // zatwierdzenie transakcji
+      await tx.commit();
       res.status(StatusCodes.CREATED).json({ id: orderId, status_id });
     } catch (inner) {
-      await tx.rollback(); // wycofanie transakcji w razie błędu walidacji
+      await tx.rollback();
       return sendError(res, StatusCodes.BAD_REQUEST, 'Failed to create order', inner.message);
     }
   } catch (err) {
@@ -150,7 +154,6 @@ router.post('/', async (req, res) => {
 });
 
 // PATCH /orders/:id  { status_id } – zmiana statusu zamówienia
-// Sprawdza: istnienie, brak zmian po anulowaniu, brak duplikacji statusu, dozwolone przejście
 router.patch('/:id', async (req, res) => {
   const idCheck = idParamSchema.validate(req.params.id);
   if (idCheck.error) return sendError(res, StatusCodes.BAD_REQUEST, 'Invalid order id');
@@ -169,8 +172,6 @@ router.patch('/:id', async (req, res) => {
     if (from === nextStatus) return sendError(res, StatusCodes.BAD_REQUEST, 'Order already has the requested status');
     if (!canTransition(from, nextStatus)) return sendError(res, StatusCodes.CONFLICT, `Invalid status transition from ${from} to ${nextStatus}`);
 
-    // Przejście do CONFIRMED (2): ustaw approved_at, jeśli jeszcze puste.
-    // CANCELED/ FULFILLED: approved_at pozostaje bez zmian.
     const reqSql = pool.request().input('id', sql.Int, id).input('status_id', sql.Int, nextStatus);
     let update = 'UPDATE dbo.orders SET status_id=@status_id';
     if (nextStatus === 2) update += ', approved_at = ISNULL(approved_at, SYSUTCDATETIME())';
@@ -179,6 +180,66 @@ router.patch('/:id', async (req, res) => {
     res.json({ id, status_id: nextStatus });
   } catch (err) {
     sendError(res, StatusCodes.INTERNAL_SERVER_ERROR, 'Failed to update order status', err.message);
+  }
+});
+
+// POST /orders/:id/opinions – dodanie opinii do zamówienia
+router.post('/:id/opinions', authenticateToken, async (req, res) => {
+  const idCheck = idParamSchema.validate(req.params.id);
+  if (idCheck.error) return sendError(res, StatusCodes.BAD_REQUEST, 'Invalid order id');
+
+  const { rating, content } = req.body;
+  if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
+    return sendError(res, StatusCodes.BAD_REQUEST, 'Rating must be an integer between 1 and 5');
+  }
+
+  const orderId = idCheck.value;
+  try {
+    const pool = await getPool();
+    const orderRes = await pool.request().input('id', sql.Int, orderId)
+      .query('SELECT user_name, status_id FROM dbo.orders WHERE id=@id');
+
+    if (orderRes.recordset.length === 0) return sendError(res, StatusCodes.NOT_FOUND, 'Order not found');
+    const order = orderRes.recordset[0];
+
+    if (order.user_name !== req.user.username) {
+      return sendError(res, StatusCodes.FORBIDDEN, 'You can only rate your own orders');
+    }
+
+    if (![3, 4].includes(order.status_id)) {
+      return sendError(res, StatusCodes.BAD_REQUEST, 'Order must be FULFILLED or CANCELED to leave an opinion');
+    }
+
+    const existing = await pool.request().input('oid', sql.Int, orderId)
+      .query('SELECT id FROM dbo.order_opinions WHERE order_id=@oid');
+    if (existing.recordset.length > 0) {
+      return sendError(res, StatusCodes.CONFLICT, 'Opinion for this order already exists');
+    }
+
+    await pool.request()
+      .input('oid', sql.Int, orderId)
+      .input('rating', sql.Int, rating)
+      .input('content', sql.NVarChar(sql.MAX), content || '')
+      .query('INSERT INTO dbo.order_opinions (order_id, rating, content) VALUES (@oid, @rating, @content)');
+
+    res.status(StatusCodes.CREATED).json({ success: true, order_id: orderId });
+  } catch (err) {
+    sendError(res, StatusCodes.INTERNAL_SERVER_ERROR, 'Failed to add opinion', err.message);
+  }
+});
+
+// GET /orders/:id/opinions – pobranie opinii dla zamówienia (wrapped structure)
+router.get('/:id/opinions', async (req, res) => {
+  const idCheck = idParamSchema.validate(req.params.id);
+  if (idCheck.error) return sendError(res, StatusCodes.BAD_REQUEST, 'Invalid order id');
+
+  try {
+    const pool = await getPool();
+    const result = await pool.request().input('oid', sql.Int, idCheck.value)
+      .query('SELECT id, rating, content, created_at FROM dbo.order_opinions WHERE order_id=@oid');
+    res.json({ opinions: result.recordset });
+  } catch (err) {
+    sendError(res, StatusCodes.INTERNAL_SERVER_ERROR, 'Failed to fetch opinions', err.message);
   }
 });
 

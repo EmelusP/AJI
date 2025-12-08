@@ -31,6 +31,30 @@ app.use('/products', (req, res, next) => {
 app.use('/products', require('./api/seo')); // SEO description
 app.use('/orders', require('./api/orders'));
 
+// TEMPORARY: Migration endpoint for D4
+app.get('/migrate-d4', async (req, res) => {
+  try {
+    const { getPool } = require('./common/db');
+    const pool = await getPool();
+    await pool.query(`
+      IF OBJECT_ID('dbo.order_opinions', 'U') IS NULL
+      BEGIN
+        CREATE TABLE dbo.order_opinions (
+          id INT IDENTITY(1,1) PRIMARY KEY,
+          order_id INT NOT NULL,
+          rating INT NOT NULL CHECK (rating >= 1 AND rating <= 5),
+          content NVARCHAR(MAX),
+          created_at DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
+          CONSTRAINT fk_opinions_order FOREIGN KEY (order_id) REFERENCES dbo.orders(id) ON DELETE CASCADE
+        );
+      END
+    `);
+    res.send('Migration D4 OK');
+  } catch (err) {
+    res.status(500).send(err.message);
+  }
+});
+
 // Health
 app.get('/health', (req, res) => res.json({ ok: true }));
 

@@ -1,4 +1,4 @@
-# Używa środowiska `local` (zdefiniuj w `http-client.env.json`).
+# Używa zmiennej {{base}} zdefiniowanej w http-client.env.json (środowisko `local`).
 
 ### 1. Login as Employee (Allowed)
 POST {{base}}/login
