@@ -9,9 +9,11 @@ const app = express();
 
 // Middlewares – JSON body, ograniczenie rozmiaru
 app.use(express.json({ limit: '1mb' }));
+app.use(express.text({ type: 'text/csv' })); // Obsługa CSV
 
 // Rejestracja tras API
 app.use('/', require('./api/auth')); // /login, /refresh
+app.use('/', require('./api/init')); // /init
 
 const { authenticateToken, requireRole } = require('./common/middleware');
 

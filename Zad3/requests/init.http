@@ -1,0 +1,74 @@
+# Używa środowiska `local` (zdefiniuj w `http-client.env.json`).
+
+### 1. Login as Employee (Allowed)
+POST {{base}}/login
+Content-Type: application/json
+
+{
+  "username": "admin_sklepu",
+  "password": "employee123"
+}
+
+> {%
+  client.global.set("empToken", response.body.accessToken);
+%}
+
+### 2. Login as Client (Forbidden for Init)
+POST {{base}}/login
+Content-Type: application/json
+
+{
+  "username": "jan_nowak",
+  "password": "client123"
+}
+
+> {%
+  client.global.set("clientToken", response.body.accessToken);
+%}
+
+### 3. Init via JSON (Should succeed if DB empty)
+POST {{base}}/init
+Content-Type: application/json
+Authorization: Bearer {{empToken}}
+
+[
+  {
+    "name": "JSON Product 1",
+    "description": "Desc 1",
+    "unit_price": 10.50,
+    "unit_weight": 0.5,
+    "category_id": 1
+  },
+  {
+    "name": "JSON Product 2",
+    "description": "Desc 2",
+    "unit_price": 20.00,
+    "unit_weight": 1.2,
+    "category_id": 2
+  }
+]
+
+### 4. Init via CSV (Should succeed if DB empty)
+POST {{base}}/init
+Content-Type: text/csv
+Authorization: Bearer {{empToken}}
+
+name,description,unit_price,unit_weight,category_id
+CSV Product A,Desc A,99.99,0.1,1
+CSV Product B,Desc B,49.50,2.0,2
+
+### 5. Init - Forbidden Role (Client)
+POST {{base}}/init
+Content-Type: application/json
+Authorization: Bearer {{clientToken}}
+
+[]
+
+### 6. Init - Database already initialized (Expect 400 if products exist)
+POST {{base}}/init
+Content-Type: application/json
+Authorization: Bearer {{empToken}}
+
+[
+  { "name": "Fail", "description": "...", "unit_price": 1, "unit_weight": 1, "category_id": 1 }
+]
