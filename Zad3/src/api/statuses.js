@@ -1,11 +1,9 @@
-// Endpointy statusów zamówienia – odczyt listy statusów
 const express = require('express');
 const { getPool } = require('../common/db');
 const { StatusCodes, sendError } = require('../common/http');
 
 const router = express.Router();
 
-// GET /status – zwraca słownik statusów (id, name)
 router.get('/', async (req, res) => {
   try {
     const pool = await getPool();

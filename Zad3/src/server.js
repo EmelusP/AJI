@@ -1,4 +1,3 @@
-// Punkt wejścia – startuje serwer HTTP z aplikacją Express
 const app = require('./app');
 
 const PORT = Number(process.env.PORT || 3000);

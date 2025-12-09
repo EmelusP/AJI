@@ -1,6 +1,4 @@
-# Używa zmiennej {{base}} zdefiniowanej w http-client.env.json (środowisko `local`).
-
-### 1. Login as Employee (Allowed)
+### Login as employee
 POST {{base}}/login
 Content-Type: application/json
 
@@ -13,7 +11,7 @@ Content-Type: application/json
   client.global.set("empToken", response.body.accessToken);
 %}
 
-### 2. Login as Client (Forbidden for Init)
+### Login as client
 POST {{base}}/login
 Content-Type: application/json
 
@@ -26,7 +24,7 @@ Content-Type: application/json
   client.global.set("clientToken", response.body.accessToken);
 %}
 
-### 3. Init via JSON (Should succeed if DB empty)
+### Init via JSON
 POST {{base}}/init
 Content-Type: application/json
 Authorization: Bearer {{empToken}}
@@ -48,7 +46,7 @@ Authorization: Bearer {{empToken}}
   }
 ]
 
-### 4. Init via CSV (Should succeed if DB empty)
+### Init via CSV
 POST {{base}}/init
 Content-Type: text/csv
 Authorization: Bearer {{empToken}}
@@ -57,14 +55,14 @@ name,description,unit_price,unit_weight,category_id
 CSV Product A,Desc A,99.99,0.1,1
 CSV Product B,Desc B,49.50,2.0,2
 
-### 5. Init - Forbidden Role (Client)
+### Init with insufficient role
 POST {{base}}/init
 Content-Type: application/json
 Authorization: Bearer {{clientToken}}
 
 []
 
-### 6. Init - Database already initialized (Expect 400 if products exist)
+### Init after data exists
 POST {{base}}/init
 Content-Type: application/json
 Authorization: Bearer {{empToken}}

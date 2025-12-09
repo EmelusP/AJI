@@ -1,11 +1,9 @@
-// Endpointy kategorii – tylko odczyt pełnej listy (kategorie są predefiniowane)
 const express = require('express');
 const { getPool, sql } = require('../common/db');
 const { StatusCodes, sendError } = require('../common/http');
 
 const router = express.Router();
 
-// GET /categories – zwraca wszystkie kategorie
 router.get('/', async (req, res) => {
   try {
     const pool = await getPool();

@@ -1,9 +1,7 @@
-# Używa zmiennej {{base}} zdefiniowanej w http-client.env.json (środowisko `local`).
-
-### 0. TEMPORARY: Run Migration (Create Table)
+### Run migration for opinions
 GET {{base}}/migrate-d4
 
-### 1. Login as Client (Jan)
+### Login as client
 POST {{base}}/login
 Content-Type: application/json
 
@@ -16,7 +14,7 @@ Content-Type: application/json
   client.global.set("clientToken", response.body.accessToken);
 %}
 
-### 2. Login as Employee (Admin)
+### Login as employee
 POST {{base}}/login
 Content-Type: application/json
 
@@ -29,7 +27,7 @@ Content-Type: application/json
   client.global.set("empToken", response.body.accessToken);
 %}
 
-### 3. Create Order (Jan) - Starts as CONFIRMED
+### Create confirmed order
 POST {{base}}/orders
 Content-Type: application/json
 Authorization: Bearer {{clientToken}}
@@ -49,7 +47,7 @@ Authorization: Bearer {{clientToken}}
   client.log("Order Created with ID: " + response.body.id);
 %}
 
-### 4. Admin fulfills order
+### Update order status to fulfilled
 PATCH {{base}}/orders/{{orderId}}
 Content-Type: application/json
 
@@ -57,7 +55,7 @@ Content-Type: application/json
   "status_id": 4
 }
 
-### 5. Add Opinion (Valid)
+### Add valid opinion
 POST {{base}}/orders/{{orderId}}/opinions
 Content-Type: application/json
 Authorization: Bearer {{clientToken}}
@@ -67,13 +65,13 @@ Authorization: Bearer {{clientToken}}
   "content": "Udany zakup, polecam!"
 }
 
-### 6. Get Opinions
+### List opinions
 GET {{base}}/orders/{{orderId}}/opinions
 
-### 7. Get Order Details (includes opinions)
+### Fetch order details
 GET {{base}}/orders/{{orderId}}
 
-### 8. Add Order with invalid rating (Fail 400)
+### Add invalid opinion (expect failure)
 POST {{base}}/orders/{{orderId}}/opinions
 Content-Type: application/json
 Authorization: Bearer {{clientToken}}

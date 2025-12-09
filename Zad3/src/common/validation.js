@@ -1,9 +1,7 @@
-// Schematy walidacji (Joi) dla parametrów i payloadów API
 const Joi = require('joi');
 
 const idParamSchema = Joi.number().integer().positive().required();
 
-// Walidacja tworzenia produktu
 const productCreateSchema = Joi.object({
   name: Joi.string().trim().min(1).max(255).required(),
   description: Joi.string().trim().min(1).required(),
@@ -12,7 +10,6 @@ const productCreateSchema = Joi.object({
   category_id: Joi.number().integer().positive().required(),
 });
 
-// Walidacja aktualizacji produktu (co najmniej jedno pole)
 const productUpdateSchema = Joi.object({
   name: Joi.string().trim().min(1).max(255),
   description: Joi.string().trim().min(1),
@@ -21,7 +18,6 @@ const productUpdateSchema = Joi.object({
   category_id: Joi.number().integer().positive(),
 }).min(1);
 
-// Walidacja pojedynczej pozycji zamówienia
 const orderItemSchema = Joi.object({
   product_id: Joi.number().integer().positive().required(),
   quantity: Joi.number().integer().positive().required(),
@@ -29,7 +25,6 @@ const orderItemSchema = Joi.object({
   discount: Joi.number().precision(2).min(0).max(100).optional(),
 });
 
-// Walidacja tworzenia zamówienia (nagłówek + pozycje)
 const orderCreateSchema = Joi.object({
   user_name: Joi.string().trim().min(1).max(255).required(),
   email: Joi.string().email().required(),
@@ -38,7 +33,6 @@ const orderCreateSchema = Joi.object({
   items: Joi.array().items(orderItemSchema).min(1).required(),
 });
 
-// Walidacja aktualizacji statusu zamówienia
 const orderStatusUpdateSchema = Joi.object({
   status_id: Joi.number().integer().positive().required(),
 });

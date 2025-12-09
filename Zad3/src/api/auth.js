@@ -15,7 +15,6 @@ const refreshSchema = Joi.object({
     refreshToken: Joi.string().required()
 });
 
-// POST /login
 router.post('/login', async (req, res) => {
     const { error, value } = loginSchema.validate(req.body);
     if (error) return sendError(res, StatusCodes.BAD_REQUEST, 'Invalid credentials format');
@@ -43,7 +42,6 @@ router.post('/login', async (req, res) => {
     }
 });
 
-// POST /refresh
 router.post('/refresh', async (req, res) => {
     const { error, value } = refreshSchema.validate(req.body);
     if (error) return sendError(res, StatusCodes.BAD_REQUEST, 'Refresh token required');
@@ -53,8 +51,6 @@ router.post('/refresh', async (req, res) => {
         return sendError(res, StatusCodes.FORBIDDEN, 'Invalid or expired refresh token');
     }
 
-    // Opcjonalnie: można sprawdzić czy user nadal istnieje w bazie
-    // Na razie ufamy tokenowi (stateless)
     const tokens = generateTokens({
         id: decoded.id,
         username: decoded.username,

@@ -7,7 +7,6 @@ async function initUsers() {
         const pool = await getPool();
         console.log('Connected to DB');
 
-        // Create table if not exists
         await pool.query(`
       IF OBJECT_ID('dbo.users', 'U') IS NULL
       BEGIN
@@ -23,14 +22,12 @@ async function initUsers() {
         PRINT 'Table already exists';
     `);
 
-        // Check if users exist
         const count = await pool.query('SELECT COUNT(*) as c FROM dbo.users');
         if (count.recordset[0].c > 0) {
             console.log('Users already exist, skipping seed.');
             process.exit(0);
         }
 
-        // Seed users
         const clientPass = await bcrypt.hash('client123', 10);
         const employeePass = await bcrypt.hash('employee123', 10);
 

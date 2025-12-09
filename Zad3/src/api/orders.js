@@ -1,4 +1,3 @@
-// Endpointy zamówień – lista, wyszukiwanie, szczegóły, tworzenie, zmiana statusu
 const express = require('express');
 const { getPool, sql } = require('../common/db');
 const { StatusCodes, sendError } = require('../common/http');
@@ -8,7 +7,6 @@ const { canTransition } = require('../common/statusTransitions');
 
 const router = express.Router();
 
-// Pomocniczo: pobiera nagłówek zamówienia, pozycje oraz opinie
 async function fetchOrder(pool, id) {
   const header = await pool.request().input('id', sql.Int, id)
     .query(`SELECT o.id, o.approved_at, o.status_id, s.name AS status_name, o.user_name, o.email, o.phone, o.created_at
@@ -29,7 +27,6 @@ async function fetchOrder(pool, id) {
   };
 }
 
-// GET /orders – lista nagłówków zamówień (bez pozycji)
 router.get('/', async (req, res) => {
   try {
     const pool = await getPool();
@@ -44,7 +41,6 @@ router.get('/', async (req, res) => {
   }
 });
 
-// GET /orders/:id – pełne zamówienie z pozycjami i opiniami
 router.get('/:id', async (req, res) => {
   const { error, value } = idParamSchema.validate(req.params.id);
   if (error) return sendError(res, StatusCodes.BAD_REQUEST, 'Invalid order id');
@@ -58,7 +54,6 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// GET /orders/user/:username – zamówienia dla danego użytkownika
 router.get('/user/:username', async (req, res) => {
   const username = String(req.params.username || '').trim();
   if (!username) return sendError(res, StatusCodes.BAD_REQUEST, 'Username is required');
@@ -74,7 +69,6 @@ router.get('/user/:username', async (req, res) => {
   }
 });
 
-// GET /orders/status/:statusId – zamówienia o danym statusie
 router.get('/status/:statusId', async (req, res) => {
   const { error, value } = idParamSchema.validate(req.params.statusId);
   if (error) return sendError(res, StatusCodes.BAD_REQUEST, 'Invalid status id');
@@ -90,7 +84,6 @@ router.get('/status/:statusId', async (req, res) => {
   }
 });
 
-// POST /orders – utworzenie nowego zamówienia
 router.post('/', async (req, res) => {
   const { error, value } = orderCreateSchema.validate(req.body);
   if (error) return sendError(res, StatusCodes.BAD_REQUEST, 'Invalid order data', error.details);
@@ -103,7 +96,6 @@ router.post('/', async (req, res) => {
     try {
       const request = new sql.Request(tx);
 
-      // Walidacja produktów i pobranie bieżących cen (mapa id -> cena)
       const productIds = items.map(i => i.product_id);
       const uniqueIds = [...new Set(productIds)];
       if (uniqueIds.length === 0) throw new Error('No items');
@@ -153,7 +145,6 @@ router.post('/', async (req, res) => {
   }
 });
 
-// PATCH /orders/:id  { status_id } – zmiana statusu zamówienia
 router.patch('/:id', async (req, res) => {
   const idCheck = idParamSchema.validate(req.params.id);
   if (idCheck.error) return sendError(res, StatusCodes.BAD_REQUEST, 'Invalid order id');
@@ -183,7 +174,6 @@ router.patch('/:id', async (req, res) => {
   }
 });
 
-// POST /orders/:id/opinions – dodanie opinii do zamówienia
 router.post('/:id/opinions', authenticateToken, async (req, res) => {
   const idCheck = idParamSchema.validate(req.params.id);
   if (idCheck.error) return sendError(res, StatusCodes.BAD_REQUEST, 'Invalid order id');
@@ -228,7 +218,6 @@ router.post('/:id/opinions', authenticateToken, async (req, res) => {
   }
 });
 
-// GET /orders/:id/opinions – pobranie opinii dla zamówienia (wrapped structure)
 router.get('/:id/opinions', async (req, res) => {
   const idCheck = idParamSchema.validate(req.params.id);
   if (idCheck.error) return sendError(res, StatusCodes.BAD_REQUEST, 'Invalid order id');

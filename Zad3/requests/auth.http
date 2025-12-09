@@ -1,5 +1,3 @@
-# Używa zmiennej {{base}} zdefiniowanej w http-client.env.json (środowisko `local`).
-
 ### Login
 POST {{base}}/login
 Content-Type: application/json
@@ -14,7 +12,7 @@ Content-Type: application/json
   client.global.set("refreshToken", response.body.refreshToken);
 %}
 
-### Refresh Token
+### Refresh token
 POST {{base}}/refresh
 Content-Type: application/json
 
@@ -26,33 +24,22 @@ Content-Type: application/json
   client.global.set("accessToken", response.body.accessToken);
 %}
 
-### Health
-# Sprawdzenie, czy serwer żyje (powinno zwrócić { "ok": true }).
+### Health check
 GET {{base}}/health
 
 ### Get categories
-# Pobranie listy predefiniowanych kategorii z bazy danych.
-# Odpowiedź: tablica obiektów { id, name }.
 GET {{base}}/categories
 
-### Get order statuses
-# Pobranie listy statusów zamówień (1=PENDING, 2=CONFIRMED, 3=CANCELED, 4=FULFILLED).
+### Get statuses
 GET {{base}}/status
-s
-### Get all products
-# Pobranie pełnej listy produktów wraz z informacją o kategorii.
-# Odpowiedź: tablica obiektów { id, name, description, unit_price, unit_weight, category_id, category_name }.
+
+### Get products
 GET {{base}}/products
 
 ### Get product by id
-# Pobranie jednego produktu po identyfikatorze.
-# Jeśli produkt nie istnieje, serwer zwróci 404 z komunikatem błędu.
 GET {{base}}/products/1
 
-### Create product
-# Dodanie nowego produktu do bazy.
-# Wymagane pola: name, description (HTML dozwolony), unit_price (>0), unit_weight (>0), category_id (musi istnieć).
-# Oczekiwany rezultat: 201 Created i obiekt z nowym id.
+### Create product (requires auth)
 POST {{base}}/products
 Content-Type: application/json
 Authorization: Bearer {{accessToken}}
@@ -65,24 +52,16 @@ Authorization: Bearer {{accessToken}}
   "category_id": 1
 }
 
-### Get all orders
-# Pobranie listy zamówień (nagłówki zamówień bez pozycji).
-# Odpowiedź: tablica obiektów { id, approved_at, status_id, status_name, user_name, email, phone, created_at }.
+### Get orders
 GET {{base}}/orders
 
-### Get orders by username
-# Pobranie zamówień przypisanych do konkretnego użytkownika (po polu user_name).
+### Orders by username
 GET {{base}}/orders/user/jan
 
-### Get orders by status (1=PENDING)
-# Pobranie zamówień o zadanym statusie (tu: 1 = PENDING).
+### Orders by status
 GET {{base}}/orders/status/1
 
 ### Create order
-# Utworzenie nowego zamówienia z pozycjami.
-# Wymagane pola: user_name, email, phone (walidowane); items (co najmniej 1 pozycja).
-# Każda pozycja: product_id (musi istnieć), quantity (>0); unit_price jest ustalany automatycznie na podstawie produktu.
-# Oczekiwany rezultat: 201 Created i obiekt z nowym id zamówienia.
 POST {{base}}/orders
 Content-Type: application/json
 

@@ -1,4 +1,3 @@
-// Endpointy produktów – lista, szczegóły, tworzenie, aktualizacja
 const express = require('express');
 const { getPool, sql } = require('../common/db');
 const { StatusCodes, sendError } = require('../common/http');
@@ -10,7 +9,6 @@ const {
 
 const router = express.Router();
 
-// GET /products – pełna lista produktów wraz z nazwą kategorii
 router.get('/', async (req, res) => {
   try {
     const pool = await getPool();
@@ -27,7 +25,6 @@ router.get('/', async (req, res) => {
   }
 });
 
-// GET /products/:id – pojedynczy produkt (404 gdy brak)
 router.get('/:id', async (req, res) => {
   const { error, value } = idParamSchema.validate(req.params.id);
   if (error) return sendError(res, StatusCodes.BAD_REQUEST, 'Invalid product id');
@@ -51,13 +48,11 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// POST /products – dodanie nowego produktu (walidacja danych + istnienie kategorii)
 router.post('/', async (req, res) => {
   const { error, value } = productCreateSchema.validate(req.body);
   if (error) return sendError(res, StatusCodes.BAD_REQUEST, 'Invalid product data', error.details);
   try {
     const pool = await getPool();
-    // Ensure category exists
     const cat = await pool.request().input('cid', sql.Int, value.category_id).query('SELECT id FROM dbo.categories WHERE id=@cid');
     if (cat.recordset.length === 0) return sendError(res, StatusCodes.BAD_REQUEST, 'Category does not exist');
 
@@ -80,7 +75,6 @@ router.post('/', async (req, res) => {
   }
 });
 
-// PUT /products/:id – aktualizacja pól produktu (bez zmiany id)
 router.put('/:id', async (req, res) => {
   const idCheck = idParamSchema.validate(req.params.id);
   if (idCheck.error) return sendError(res, StatusCodes.BAD_REQUEST, 'Invalid product id');
@@ -90,7 +84,6 @@ router.put('/:id', async (req, res) => {
   const id = idCheck.value;
   try {
     const pool = await getPool();
-    // Check existence
     const exists = await pool.request().input('id', sql.Int, id).query('SELECT id FROM dbo.products WHERE id=@id');
     if (exists.recordset.length === 0) return sendError(res, StatusCodes.NOT_FOUND, 'Product not found');
 
@@ -99,7 +92,6 @@ router.put('/:id', async (req, res) => {
       if (cat.recordset.length === 0) return sendError(res, StatusCodes.BAD_REQUEST, 'Category does not exist');
     }
 
-    // Budowa zapytania UPDATE dynamicznie tylko dla przekazanych pól
     const fields = [];
     const reqSql = pool.request().input('id', sql.Int, id);
     if (value.name !== undefined) { fields.push('name=@name'); reqSql.input('name', sql.NVarChar(255), value.name); }

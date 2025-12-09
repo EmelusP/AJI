@@ -1,4 +1,3 @@
-// Endpoint SEO – generowanie opisu produktu w HTML (LLM lub fallback)
 const express = require('express');
 const { getPool, sql } = require('../common/db');
 const { StatusCodes, sendError } = require('../common/http');
@@ -7,7 +6,6 @@ const { generateSeoDescription } = require('../services/seo');
 
 const router = express.Router();
 
-// GET /products/:id/seo-description – zwraca HTML opisu SEO dla produktu
 router.get('/:id/seo-description', async (req, res) => {
   const { error, value } = idParamSchema.validate(req.params.id);
   if (error) return sendError(res, StatusCodes.BAD_REQUEST, 'Invalid product id');

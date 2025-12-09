@@ -1,8 +1,5 @@
 const axios = require('axios');
 
-// Generuje SEO‑przyjazny opis HTML dla produktu.
-// Jeśli skonfigurowano LLM (zmienne LLM_*), wywołuje model językowy.
-// W przeciwnym razie zwraca prosty opis oparty na szablonie (fallback).
 async function generateSeoDescription(product) {
   const { LLM_BASE_URL, LLM_API_KEY, LLM_MODEL = 'mixtral-8x7b-32768' } = process.env;
   const useLLM = LLM_BASE_URL && LLM_API_KEY;
@@ -45,7 +42,6 @@ Requirements:
     }
   }
     console.log('[SEO] Using fallback description for product', product.id);
-  // Fallback: prosty, semantyczny opis produktu po polsku
   return `
   <section class="product-seo">
     <h2>${escapeHtml(product.name)} – opis i najważniejsze cechy</h2>

@@ -1,11 +1,7 @@
-// Połączenie z bazą Microsoft SQL Server (pool połączeń)
-// Czyta konfigurację z zmiennych środowiskowych (.env)
 const sql = require('mssql');
 
-// Pojedyncza obietnica z utworzonym połączeniem (singleton)
 let poolPromise;
 
-// Buduje obiekt konfiguracyjny klienta mssql na podstawie ENV
 function getConfig() {
   const {
     DB_SERVER,
@@ -34,7 +30,6 @@ function getConfig() {
   };
 }
 
-// Zwraca (tworzy leniwie) globalny pool połączeń
 async function getPool() {
   if (!poolPromise) {
     poolPromise = sql.connect(getConfig());
