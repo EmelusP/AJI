@@ -34,12 +34,17 @@ Requirements:
         { headers: { Authorization: `Bearer ${LLM_API_KEY}` } }
       );
       const content = response?.data?.choices?.[0]?.message?.content;
+        if (content) {
+            console.log('[SEO] LLM response used for product', product.id);
+            return content;
+        }
+        console.warn('[SEO] LLM returned empty content, using fallback');
       if (content) return content;
     } catch (err) {
-      // W przypadku błędu wzywania LLM – użyj fallbacku poniżej
+        console.error('[SEO] LLM call failed:', err.message);
     }
   }
-
+    console.log('[SEO] Using fallback description for product', product.id);
   // Fallback: prosty, semantyczny opis produktu po polsku
   return `
   <section class="product-seo">

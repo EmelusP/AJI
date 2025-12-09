@@ -9,7 +9,7 @@ let poolPromise;
 function getConfig() {
   const {
     DB_SERVER,
-    DB_PORT = '1433',
+    DB_PORT = '1432',
     DB_USER,
     DB_PASSWORD,
     DB_DATABASE,

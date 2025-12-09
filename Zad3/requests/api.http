@@ -67,3 +67,7 @@ Content-Type: application/json
     { "product_id": 1, "quantity": 2 }
   ]
 }
+
+###GET SEO
+GET {{base}}/products/1/seo-description
+
