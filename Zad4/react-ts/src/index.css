@@ -1,0 +1,14 @@
+body {
+  margin: 0;
+  font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+}
+
+nav .btn {
+  min-width: 150px;
+}
+
+@media (max-width: 768px) {
+  nav .btn {
+    width: 100%;
+  }
+}
