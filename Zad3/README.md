@@ -47,11 +47,11 @@ Serwer nasłuchuje na porcie `PORT` (domyślnie 3000). Health check: `GET /healt
 Walidacja: nazwa/opis niepuste, cena/waga > 0, poprawna kategoria.
 
 ### Zamówienia
-- `GET /orders` – lista zamówień (nagłówki)
-- `GET /orders/:id` – zamówienie z pozycjami
-- `GET /orders/user/:username` – zamówienia dla użytkownika
-- `GET /orders/status/:statusId` – zamówienia wg statusu
-- `POST /orders` – utworzenie zamówienia
+- `GET /orders` – lista zamówień (nagłówki, **wymaga tokena pracownika**)
+- `GET /orders/:id` – zamówienie z pozycjami (**token pracownika**)
+- `GET /orders/user/:username` – zamówienia dla użytkownika (**token pracownika**)
+- `GET /orders/status/:statusId` – zamówienia wg statusu (**token pracownika**)
+- `POST /orders` – utworzenie zamówienia (publiczne – klient)
   - body: `{ user_name, email, phone, approved_at? (null|iso), items: [{ product_id, quantity, vat?, discount? }] }`
   - walidacja: pola użytkownika niepuste/poprawne, produkty muszą istnieć, ilości > 0; cena pozycji kopiowana z aktualnej ceny produktu
   - status początkowy: `PENDING` (1) lub `CONFIRMED` (2) jeśli podano `approved_at`
@@ -61,6 +61,7 @@ Walidacja: nazwa/opis niepuste, cena/waga > 0, poprawna kategoria.
     - `PENDING (1) -> CONFIRMED (2) | CANCELED (3)`
     - `CONFIRMED (2) -> FULFILLED (4) | CANCELED (3)`
     - `CANCELED (3)` i `FULFILLED (4)` – zmiana niedozwolona
+  - endpoint wymaga tokena pracownika
 
 ### SEO (D1 – opcjonalne)
 - `GET /products/:id/seo-description` – zwraca HTML z opisem SEO
@@ -85,7 +86,9 @@ Przykładowe zapytania:
 3. `POST http://localhost:3000/orders` z JSON body z pozycjami
 4. `PATCH http://localhost:3000/orders/1` body `{"status_id":2}`
 5. `GET http://localhost:3000/products/1/seo-description`
+6. `POST http://localhost:3000/register` body `{"username":"nowyklient","password":"haslo123"}`
+7. `POST http://localhost:3000/login` body `{"username":"pracownik@shop.pl","password":"pracownik123"}`
 
 ## Uwaga dot. bezpieczeństwa
 - Nie logujemy PII. Hasła/sekrety tylko w `.env` (nie commitować!).
-
+- `src/api/auth.js` – logowanie/rejestracja użytkowników (`POST /register`, `POST /login`, `POST /refresh`). Domyślne konto pracownika opisane w `staff_credentials.txt` dodawane jest przez `scripts/schema.sql`.

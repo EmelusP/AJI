@@ -8,12 +8,16 @@ GO
 
 USE aji_shop;
 GO
+IF OBJECT_ID('dbo.order_opinions', 'U') IS NOT NULL DROP TABLE
+    dbo.order_opinions;
 
 IF OBJECT_ID('dbo.order_items', 'U') IS NOT NULL DROP TABLE dbo.order_items;
 IF OBJECT_ID('dbo.orders', 'U') IS NOT NULL DROP TABLE dbo.orders;
 IF OBJECT_ID('dbo.products', 'U') IS NOT NULL DROP TABLE dbo.products;
 IF OBJECT_ID('dbo.categories', 'U') IS NOT NULL DROP TABLE dbo.categories;
 IF OBJECT_ID('dbo.order_statuses', 'U') IS NOT NULL DROP TABLE dbo.order_statuses;
+IF OBJECT_ID('dbo.order_opinions', 'U') IS NOT NULL DROP TABLE dbo.order_opinions;
+IF OBJECT_ID('dbo.users', 'U') IS NOT NULL DROP TABLE dbo.users;
 GO
 
 CREATE TABLE dbo.order_statuses (
@@ -89,4 +93,11 @@ INSERT INTO dbo.categories (name) VALUES
 
 INSERT INTO dbo.products (name, description, unit_price, unit_weight, category_id) VALUES
   (N'USB-C Cable', N'<p>Durable 1m USB-C cable</p>', 29.99, 0.050, (SELECT id FROM dbo.categories WHERE name=N'Electronics')),
-  (N'Coffee Mug', N'<p>Ceramic mug 300ml</p>', 19.90, 0.300, (SELECT id FROM dbo.categories WHERE name=N'Home'));
+  (N'Coffee Mug', N'<p>Ceramic mug 300ml</p>', 19.90, 0.300, (SELECT id FROM dbo.categories WHERE name=N'Home')),
+  (N'Smart Speaker', N'<p>Wi-Fi speaker with voice assistant support</p>', 349.00, 0.850, (SELECT id FROM dbo.categories WHERE name=N'Electronics')),
+  (N'Fantasy Novel', N'<p>Hardcover, 520 pages, best-selling author</p>', 59.50, 0.420, (SELECT id FROM dbo.categories WHERE name=N'Books')),
+  (N'Yoga Mat', N'<p>Non-slip mat 183x61cm, 6mm thick</p>', 119.99, 1.200, (SELECT id FROM dbo.categories WHERE name=N'Home')),
+  (N'RC Car', N'<p>Remote controlled rally car with rechargeable battery</p>', 219.00, 1.050, (SELECT id FROM dbo.categories WHERE name=N'Toys'));
+
+INSERT INTO dbo.users (username, password_hash, role) VALUES
+  (N'pracownik@shop.pl', N'$2b$10$Vily0u/GbzcPOENdnLQjResqsKEy4MybIrYYrr5e6J1/fOjmKDSx6', N'PRACOWNIK');
