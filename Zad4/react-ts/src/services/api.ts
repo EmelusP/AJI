@@ -122,6 +122,7 @@ export const api = {
     request(`/products/${id}`, { method: 'PUT', data: payload, token }),
   changeOrderStatus: (token: string, id: number, status_id: number) =>
     request(`/orders/${id}`, { method: 'PATCH', data: { status_id }, token }),
+  getSeoDescription: (token: string, id: number) => request<{ description?: string; message?: string }>(`/products/${id}/seo-description`, { token }),
 };
 
 export { API_URL };

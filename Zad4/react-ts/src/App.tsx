@@ -21,6 +21,7 @@ interface EditFormState {
   category_id: number;
   unit_price: string;
   unit_weight: string;
+  description: string;
 }
 
 interface AuthState extends Tokens {
@@ -87,6 +88,8 @@ function App() {
   const [checkoutForm, setCheckoutForm] = useState<CheckoutForm>(initialCheckout);
   const [checkoutErrors, setCheckoutErrors] = useState<Record<string, string>>({});
   const [orderError, setOrderError] = useState('');
+
+  const [isOptimizing, setIsOptimizing] = useState(false);
 
   const [auth, setAuth] = useState<AuthState | null>(() => {
     const raw = localStorage.getItem('ajiAuth');
@@ -335,6 +338,7 @@ function App() {
       category_id: product.category_id,
       unit_price: Number(product.unit_price).toFixed(2),
       unit_weight: Number(product.unit_weight).toFixed(3),
+      description: product.description,
     });
     setEditError('');
   }
@@ -358,6 +362,7 @@ function App() {
         category_id: Number(editForm.category_id),
         unit_price: Number(editForm.unit_price),
         unit_weight: Number(editForm.unit_weight),
+        description: editForm.description,
       };
       await api.updateProduct(auth.accessToken, editForm.id, payload);
       setEditError('');
@@ -446,6 +451,28 @@ function App() {
       }
     } catch (err) {
       setStatusError(err instanceof Error ? err.message : 'Nie udało się zmienić statusu');
+    }
+  }
+
+  async function handleOptimize() {
+    if (!editForm || !auth) return;
+    setIsOptimizing(true);
+    setEditError('');
+
+    try {
+      const response = await api.getSeoDescription(auth.accessToken, editForm.id);
+
+      const newDescription = response.description || response.message || '';
+
+      if (newDescription) {
+        setEditForm(prev => prev ? { ...prev, description: newDescription } : null);
+      } else {
+        setEditError('Otrzymano pusty opis z serwera.');
+      }
+    } catch (err) {
+      setEditError('Nie udało się pobrać opisu SEO.');
+    } finally {
+      setIsOptimizing(false);
     }
   }
 
@@ -563,64 +590,95 @@ function App() {
   function renderEditForm() {
     if (!editForm) return null;
     return (
-      <div className={`${CARD_CLASS} mt-3`}>
-        <div className={CARD_HEADER_CLASS}>Edycja towaru #{editForm.id}</div>
-        <div className="card-body">
-          {!auth && (
-            <p className="text-muted small">
-              Zapis zmian wymaga zalogowania jako pracownik.
-            </p>
-          )}
-          {editError && <p className="text-danger small">{editError}</p>}
-          <form className="row g-3" onSubmit={submitEdit}>
-            <div className="col-md-4">
-              <label className="form-label">Kategoria</label>
-              <select
-                className="form-select bg-dark text-light border-success"
-                value={editForm.category_id}
-                onChange={(e) => setEditForm({ ...editForm, category_id: Number(e.target.value) })}
-                required
-              >
-                {categories.map((cat) => (
-                  <option key={cat.id} value={cat.id}>
-                    {cat.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="col-md-4">
-              <label className="form-label">Cena (zł)</label>
-              <input
-                type="number"
-                step="0.01"
-                className="form-control bg-dark text-light border-success"
-                value={editForm.unit_price}
-                onChange={(e) => setEditForm({ ...editForm, unit_price: e.target.value })}
-                required
-              />
-            </div>
-            <div className="col-md-4">
-              <label className="form-label">Waga (kg)</label>
-              <input
-                type="number"
-                step="0.001"
-                className="form-control bg-dark text-light border-success"
-                value={editForm.unit_weight}
-                onChange={(e) => setEditForm({ ...editForm, unit_weight: e.target.value })}
-                required
-              />
-            </div>
-            <div className="col-12 d-flex justify-content-end gap-2">
-              <button type="button" className="btn btn-outline-light" onClick={cancelEdit}>
-                Anuluj
-              </button>
-              <button type="submit" className="btn btn-success">
-                Zapisz
-              </button>
-            </div>
-          </form>
+        <div className={`${CARD_CLASS} mt-3`}>
+          <div className={CARD_HEADER_CLASS}>Edycja towaru #{editForm.id}</div>
+          <div className="card-body">
+            {!auth && (
+                <p className="text-muted small">
+                  Zapis zmian wymaga zalogowania jako pracownik.
+                </p>
+            )}
+            {editError && <p className="text-danger small">{editError}</p>}
+
+            <form className="row g-3" onSubmit={submitEdit}>
+
+              <div className="col-12">
+                <label className="form-label">Opis produktu</label>
+                <textarea
+                    className="form-control bg-dark text-light border-success"
+                    rows={5}
+                    value={editForm.description}
+                    onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                    required
+                />
+                <div className="form-text text-light opacity-50 mb-2">
+                  Możesz używać znaczników HTML.
+                </div>
+                <button
+                    type="button"
+                    className="btn btn-sm btn-outline-warning"
+                    onClick={handleOptimize}
+                    disabled={isOptimizing}
+                >
+                  {isOptimizing ? (
+                      <>
+                        <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                        Generowanie opisu SEO...
+                      </>
+                  ) : (
+                      'Optymalizuj opis'
+                  )}
+                </button>
+              </div>
+
+              <div className="col-md-4">
+                <label className="form-label">Kategoria</label>
+                <select
+                    className="form-select bg-dark text-light border-success"
+                    value={editForm.category_id}
+                    onChange={(e) => setEditForm({ ...editForm, category_id: Number(e.target.value) })}
+                    required
+                >
+                  {categories.map((cat) => (
+                      <option key={cat.id} value={cat.id}>
+                        {cat.name}
+                      </option>
+                  ))}
+                </select>
+              </div>
+              <div className="col-md-4">
+                <label className="form-label">Cena (zł)</label>
+                <input
+                    type="number"
+                    step="0.01"
+                    className="form-control bg-dark text-light border-success"
+                    value={editForm.unit_price}
+                    onChange={(e) => setEditForm({ ...editForm, unit_price: e.target.value })}
+                    required
+                />
+              </div>
+              <div className="col-md-4">
+                <label className="form-label">Waga (kg)</label>
+                <input
+                    type="number"
+                    step="0.001"
+                    className="form-control bg-dark text-light border-success"
+                    value={editForm.unit_weight}
+                    onChange={(e) => setEditForm({ ...editForm, unit_weight: e.target.value })}
+                    required
+                />
+              </div>
+              <div className="col-12 d-flex justify-content-end gap-2">
+                <button type="button" className="btn btn-outline-light" onClick={cancelEdit}>
+                  Anuluj
+                </button>
+                <button type="submit" className="btn btn-success">
+                  Zapisz zmiany
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
-      </div>
     );
   }
 
