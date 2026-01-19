@@ -3,7 +3,7 @@ import './App.css';
 import { api } from './services/api';
 import type { Category, OrderDetails, OrderItem, Product, Status, Tokens } from './services/api';
 
-type View = 'catalog' | 'checkout' | 'admin' | 'statuses' | 'auth' | 'my_orders';
+type View = 'catalog' | 'checkout' | 'admin' | 'statuses' | 'auth' | 'my_orders' | 'init';
 
 interface CartItem {
   product: Product;
@@ -36,6 +36,7 @@ const VIEWS: Record<View, string> = {
   statuses: 'Zamówienia wg statusu',
   auth: 'Logowanie',
   my_orders: 'Moje zamówienia',
+  init: 'Inicjalizacja Bazy',
 };
 
 const STATUS_LABELS: Record<number, string> = {
@@ -125,6 +126,11 @@ function App() {
   const [opinionForms, setOpinionForms] = useState<Record<number, { rating: number; content: string }>>({});
   const [opinionError, setOpinionError] = useState('');
 
+  const [initFile, setInitFile] = useState<File | null>(null);
+  const [initError, setInitError] = useState('');
+  const [initSuccess, setInitSuccess] = useState('');
+  const [isInitializing, setIsInitializing] = useState(false);
+
   const [authMessage, setAuthMessage] = useState('');
   const [pendingSecureView, setPendingSecureView] = useState<View | null>(null);
   const isStaff = auth?.role === 'PRACOWNIK';
@@ -140,6 +146,14 @@ function App() {
       loadPendingOrders();
     }
   }, [view, auth]);
+
+  useEffect(() => {
+    if (view === 'init' && !isStaff) {
+      setAuthMessage('Inicjalizacja bazy dostępna tylko dla pracownika.');
+      setPendingSecureView('init');
+      setView('auth');
+    }
+  }, [view, auth, isStaff]);
 
   useEffect(() => {
     if (view === 'statuses' && auth && statusFilter) {
@@ -543,6 +557,44 @@ function App() {
     }
   }
 
+  async function handleInitDb(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!auth || !initFile) return;
+    setInitError('');
+    setInitSuccess('');
+    setIsInitializing(true);
+
+    try {
+      const text = await initFile.text();
+      let data: unknown;
+      try {
+        data = JSON.parse(text);
+      } catch {
+        throw new Error('Niepoprawny format pliku JSON.');
+      }
+
+      if (!Array.isArray(data)) {
+        throw new Error('Plik JSON musi zawierać tablicę produktów.');
+      }
+
+      // Basic validation
+      for (const item of data) {
+        if (!item.name || !item.category_id || !item.unit_price) {
+          throw new Error('Nieprawidłowa struktura produktu w pliku (brak wymaganych pól).');
+        }
+      }
+
+      const res = await api.initializeDb(auth.accessToken, data);
+      setInitSuccess(`Baza zainicjalizowana pomyślnie. Dodano ${res.count} produktów.`);
+      loadProducts();
+      setInitFile(null);
+    } catch (err) {
+      setInitError(err instanceof Error ? err.message : 'Błąd inicjalizacji');
+    } finally {
+      setIsInitializing(false);
+    }
+  }
+
   function renderFilters() {
     return (
       <div className={`${CARD_CLASS} mb-3`}>
@@ -748,6 +800,42 @@ function App() {
       </div>
     );
   }
+
+  function renderInitDb() {
+    return (
+      <div className={`${CARD_CLASS} mt-3`}>
+        <div className={CARD_HEADER_CLASS}>Inicjalizacja Bazy Danych</div>
+        <div className="card-body">
+          <p className="text-light opacity-75">
+            Użyj tej opcji, aby przywrócić początkowy stan produktów.
+            <br />
+            <strong>Uwaga:</strong> Baza danych musi być pusta (brak produktów), aby operacja się powiodła.
+          </p>
+
+          {initError && <div className="alert alert-danger">{initError}</div>}
+          {initSuccess && <div className="alert alert-success">{initSuccess}</div>}
+
+          <form onSubmit={handleInitDb}>
+            <div className="mb-3">
+              <label htmlFor="initFile" className="form-label">Plik z produktami (JSON)</label>
+              <input
+                className="form-control bg-dark text-light border-success"
+                type="file"
+                id="initFile"
+                accept=".json"
+                onChange={(e) => setInitFile(e.target.files ? e.target.files[0] : null)}
+                required
+              />
+            </div>
+            <button type="submit" className="btn btn-danger" disabled={!initFile || isInitializing}>
+              {isInitializing ? 'Inicjalizowanie...' : 'Zainicjalizuj Bazę'}
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
 
   function renderCartCard(showButton = true) {
     return (
@@ -1332,6 +1420,13 @@ function App() {
         {view === 'auth' && (
           <div className="row g-4">
             <div className="col-lg-6">{renderLoginCard(true)}</div>
+          </div>
+        )}
+
+        {view === 'init' && (
+          <div className="row g-4">
+            <div className="col-lg-8">{renderInitDb()}</div>
+            <div className="col-lg-4">{renderLoginCard()}</div>
           </div>
         )}
       </div>

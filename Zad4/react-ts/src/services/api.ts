@@ -123,7 +123,7 @@ export const api = {
   fetchUserOrders: (token: string, username: string) => request<OrderHeader[]>(`/orders/user/${username}`, { token }),
 
   addOpinion: (token: string, orderId: number, rating: number, content: string) =>
-    request<{ success: boolean; order_id: number }>(`/orders/${orderId}/opinions`, {method: 'POST', data: { rating, content }, token}),
+    request<{ success: boolean; order_id: number }>(`/orders/${orderId}/opinions`, { method: 'POST', data: { rating, content }, token }),
   login: (credentials: { username: string; password: string }) =>
     request<Tokens>('/login', { method: 'POST', data: credentials }),
   register: (payload: { username: string; password: string }) =>
@@ -134,6 +134,7 @@ export const api = {
   changeOrderStatus: (token: string, id: number, status_id: number) =>
     request(`/orders/${id}`, { method: 'PATCH', data: { status_id }, token }),
   getSeoDescription: (token: string, id: number) => request<{ description?: string; message?: string }>(`/products/${id}/seo-description`, { token }),
+  initializeDb: (token: string, data: unknown) => request<{ success: boolean; count: number }>('/init', { method: 'POST', data, token }),
 };
 
 export { API_URL };
