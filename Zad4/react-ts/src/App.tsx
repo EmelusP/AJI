@@ -3,7 +3,7 @@ import './App.css';
 import { api } from './services/api';
 import type { Category, OrderDetails, OrderItem, Product, Status, Tokens } from './services/api';
 
- type View = 'catalog' | 'checkout' | 'admin' | 'statuses' | 'auth';
+type View = 'catalog' | 'checkout' | 'admin' | 'statuses' | 'auth' | 'my_orders';
 
 interface CartItem {
   product: Product;
@@ -35,6 +35,7 @@ const VIEWS: Record<View, string> = {
   admin: 'Panel pracownika',
   statuses: 'Zamówienia wg statusu',
   auth: 'Logowanie',
+  my_orders: 'Moje zamówienia',
 };
 
 const STATUS_LABELS: Record<number, string> = {
@@ -119,6 +120,11 @@ function App() {
   const [statusError, setStatusError] = useState('');
   const [loadingOrders, setLoadingOrders] = useState(false);
 
+  const [myOrders, setMyOrders] = useState<Array<OrderDetails & { totalValue: number }>>([]);
+  // opinionsForm maps orderId -> form state
+  const [opinionForms, setOpinionForms] = useState<Record<number, { rating: number; content: string }>>({});
+  const [opinionError, setOpinionError] = useState('');
+
   const [authMessage, setAuthMessage] = useState('');
   const [pendingSecureView, setPendingSecureView] = useState<View | null>(null);
   const isStaff = auth?.role === 'PRACOWNIK';
@@ -140,6 +146,18 @@ function App() {
       loadOrdersByStatus(statusFilter);
     }
   }, [view, auth, statusFilter]);
+
+  useEffect(() => {
+    if (auth?.username) {
+      setCheckoutForm((prev) => ({ ...prev, user_name: auth.username! }));
+    }
+  }, [auth]);
+
+  useEffect(() => {
+    if (view === 'my_orders' && auth) {
+      loadUserOrders();
+    }
+  }, [view, auth]);
 
   const filteredProducts = useMemo(() => {
     return products.filter((product) => {
@@ -476,6 +494,55 @@ function App() {
     }
   }
 
+  async function loadUserOrders() {
+    if (!auth) {
+      setAuthMessage('Zaloguj się, aby zobaczyć swoje zamówienia.');
+      setPendingSecureView('my_orders');
+      setView('auth');
+      return;
+    }
+    setLoadingOrders(true);
+    try {
+      const headers = await api.fetchUserOrders(auth.accessToken, auth.username || '');
+      const detailed: Array<OrderDetails & { totalValue: number }> = [];
+      for (const order of headers) {
+        const full = await api.fetchOrderDetails(auth.accessToken, order.id);
+        detailed.push({ ...full, totalValue: calcOrderValue(full.items) });
+      }
+      setMyOrders(detailed);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoadingOrders(false);
+    }
+  }
+
+  function toggleOpinionForm(orderId: number) {
+    setOpinionForms(prev => ({
+      ...prev,
+      [orderId]: prev[orderId] ? { ...prev[orderId] } : { rating: 5, content: '' }
+    }));
+  }
+
+  async function submitOpinion(orderId: number) {
+    if (!auth || !opinionForms[orderId]) return;
+    setOpinionError('');
+    try {
+      const { rating, content } = opinionForms[orderId];
+      await api.addOpinion(auth.accessToken, orderId, rating, content);
+      // Refresh orders to show the new opinion
+      await loadUserOrders();
+      // Clear form
+      setOpinionForms(prev => {
+        const copy = { ...prev };
+        delete copy[orderId];
+        return copy;
+      });
+    } catch (err) {
+      setOpinionError(err instanceof Error ? err.message : 'Nie udało się dodać opinii');
+    }
+  }
+
   function renderFilters() {
     return (
       <div className={`${CARD_CLASS} mb-3`}>
@@ -590,95 +657,95 @@ function App() {
   function renderEditForm() {
     if (!editForm) return null;
     return (
-        <div className={`${CARD_CLASS} mt-3`}>
-          <div className={CARD_HEADER_CLASS}>Edycja towaru #{editForm.id}</div>
-          <div className="card-body">
-            {!auth && (
-                <p className="text-muted small">
-                  Zapis zmian wymaga zalogowania jako pracownik.
-                </p>
-            )}
-            {editError && <p className="text-danger small">{editError}</p>}
+      <div className={`${CARD_CLASS} mt-3`}>
+        <div className={CARD_HEADER_CLASS}>Edycja towaru #{editForm.id}</div>
+        <div className="card-body">
+          {!auth && (
+            <p className="text-muted small">
+              Zapis zmian wymaga zalogowania jako pracownik.
+            </p>
+          )}
+          {editError && <p className="text-danger small">{editError}</p>}
 
-            <form className="row g-3" onSubmit={submitEdit}>
+          <form className="row g-3" onSubmit={submitEdit}>
 
-              <div className="col-12">
-                <label className="form-label">Opis produktu</label>
-                <textarea
-                    className="form-control bg-dark text-light border-success"
-                    rows={5}
-                    value={editForm.description}
-                    onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
-                    required
-                />
-                <div className="form-text text-light opacity-50 mb-2">
-                  Możesz używać znaczników HTML.
-                </div>
-                <button
-                    type="button"
-                    className="btn btn-sm btn-outline-warning"
-                    onClick={handleOptimize}
-                    disabled={isOptimizing}
-                >
-                  {isOptimizing ? (
-                      <>
-                        <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                        Generowanie opisu SEO...
-                      </>
-                  ) : (
-                      'Optymalizuj opis'
-                  )}
-                </button>
+            <div className="col-12">
+              <label className="form-label">Opis produktu</label>
+              <textarea
+                className="form-control bg-dark text-light border-success"
+                rows={5}
+                value={editForm.description}
+                onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                required
+              />
+              <div className="form-text text-light opacity-50 mb-2">
+                Możesz używać znaczników HTML.
               </div>
+              <button
+                type="button"
+                className="btn btn-sm btn-outline-warning"
+                onClick={handleOptimize}
+                disabled={isOptimizing}
+              >
+                {isOptimizing ? (
+                  <>
+                    <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                    Generowanie opisu SEO...
+                  </>
+                ) : (
+                  'Optymalizuj opis'
+                )}
+              </button>
+            </div>
 
-              <div className="col-md-4">
-                <label className="form-label">Kategoria</label>
-                <select
-                    className="form-select bg-dark text-light border-success"
-                    value={editForm.category_id}
-                    onChange={(e) => setEditForm({ ...editForm, category_id: Number(e.target.value) })}
-                    required
-                >
-                  {categories.map((cat) => (
-                      <option key={cat.id} value={cat.id}>
-                        {cat.name}
-                      </option>
-                  ))}
-                </select>
-              </div>
-              <div className="col-md-4">
-                <label className="form-label">Cena (zł)</label>
-                <input
-                    type="number"
-                    step="0.01"
-                    className="form-control bg-dark text-light border-success"
-                    value={editForm.unit_price}
-                    onChange={(e) => setEditForm({ ...editForm, unit_price: e.target.value })}
-                    required
-                />
-              </div>
-              <div className="col-md-4">
-                <label className="form-label">Waga (kg)</label>
-                <input
-                    type="number"
-                    step="0.001"
-                    className="form-control bg-dark text-light border-success"
-                    value={editForm.unit_weight}
-                    onChange={(e) => setEditForm({ ...editForm, unit_weight: e.target.value })}
-                    required
-                />
-              </div>
-              <div className="col-12 d-flex justify-content-end gap-2">
-                <button type="button" className="btn btn-outline-light" onClick={cancelEdit}>
-                  Anuluj
-                </button>
-                <button type="submit" className="btn btn-success">
-                  Zapisz zmiany
-                </button>
-              </div>
-            </form>
-          </div>
+            <div className="col-md-4">
+              <label className="form-label">Kategoria</label>
+              <select
+                className="form-select bg-dark text-light border-success"
+                value={editForm.category_id}
+                onChange={(e) => setEditForm({ ...editForm, category_id: Number(e.target.value) })}
+                required
+              >
+                {categories.map((cat) => (
+                  <option key={cat.id} value={cat.id}>
+                    {cat.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="col-md-4">
+              <label className="form-label">Cena (zł)</label>
+              <input
+                type="number"
+                step="0.01"
+                className="form-control bg-dark text-light border-success"
+                value={editForm.unit_price}
+                onChange={(e) => setEditForm({ ...editForm, unit_price: e.target.value })}
+                required
+              />
+            </div>
+            <div className="col-md-4">
+              <label className="form-label">Waga (kg)</label>
+              <input
+                type="number"
+                step="0.001"
+                className="form-control bg-dark text-light border-success"
+                value={editForm.unit_weight}
+                onChange={(e) => setEditForm({ ...editForm, unit_weight: e.target.value })}
+                required
+              />
+            </div>
+            <div className="col-12 d-flex justify-content-end gap-2">
+              <button type="button" className="btn btn-outline-light" onClick={cancelEdit}>
+                Anuluj
+              </button>
+              <button type="submit" className="btn btn-success">
+                Zapisz zmiany
+              </button>
+            </div>
+          </form>
         </div>
+      </div>
     );
   }
 
@@ -699,7 +766,7 @@ function App() {
                   key={item.product.id}
                   className="list-group-item bg-dark text-light border-success d-flex justify-content-between align-items-center"
                 >
-                    <div>
+                  <div>
                     <div className="fw-semibold text-light">{item.product.name}</div>
                     <div className="small text-light opacity-75">
                       {item.quantity} x {formatCurrency(Number(item.product.unit_price))}
@@ -799,6 +866,7 @@ function App() {
                 className={`form-control bg-dark text-light border-success ${checkoutErrors.user_name ? 'is-invalid' : ''}`}
                 value={checkoutForm.user_name}
                 onChange={(e) => setCheckoutForm({ ...checkoutForm, user_name: e.target.value })}
+                disabled={!!auth}
               />
               {checkoutErrors.user_name && <div className="invalid-feedback">{checkoutErrors.user_name}</div>}
             </div>
@@ -892,12 +960,13 @@ function App() {
                       className="btn btn-sm btn-outline-danger"
                       onClick={() => updateOrderStatus(order.id, 3)}
                     >
+
                       ANULUJ
                     </button>
                   </div>
                 </div>
               </div>
-              <ul className="list-group list-group-flush mt-3">
+              <ul className="list-group list-group-flush mt-3 mb-3">
                 {order.items.map((item) => (
                   <li
                     key={item.id}
@@ -908,6 +977,20 @@ function App() {
                   </li>
                 ))}
               </ul>
+              {(order.opinions && order.opinions.length > 0) && (
+                <div className="mt-2 p-2 border border-info rounded bg-dark">
+                  <strong className="text-info small">Opinia klienta:</strong>
+                  <div className="d-flex align-items-center gap-2">
+                    <span className="badge bg-info text-dark">{order.opinions[0].rating}/5</span>
+                    <span className="small text-light fst-italic">"{order.opinions[0].content}"</span>
+                  </div>
+                  <div className="text-end">
+                    <small className="text-muted" style={{ fontSize: '0.7em' }}>
+                      {new Date(order.opinions[0].created_at).toLocaleString()}
+                    </small>
+                  </div>
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -967,23 +1050,133 @@ function App() {
                 </thead>
                 <tbody>
                   {statusOrders.map((order) => (
-                    <tr key={order.id}>
-                      <td className="text-success">#{order.id}</td>
-                      <td className="text-success">
-                        {order.approved_at ? new Date(order.approved_at).toLocaleString() : '—'}
-                      </td>
-                      <td className="text-success">{formatCurrency(order.totalValue)}</td>
-                      <td className="text-success fw-semibold">
-                        {order.user_name}
-                        <div className="small text-success">{order.email}</div>
-                        <div className="small text-success">{order.phone}</div>
-                      </td>
-                    </tr>
+                    <>
+                      <tr key={order.id}>
+                        <td className="text-success">#{order.id}</td>
+                        <td className="text-success">
+                          {order.approved_at ? new Date(order.approved_at).toLocaleString() : '—'}
+                        </td>
+                        <td className="text-success">{formatCurrency(order.totalValue)}</td>
+                        <td className="text-success fw-semibold">
+                          {order.user_name}
+                          <div className="small text-success">{order.email}</div>
+                          <div className="small text-success">{order.phone}</div>
+                        </td>
+                      </tr>
+                      {order.opinions && order.opinions.length > 0 && (
+                        <tr key={`op-${order.id}`}>
+                          <td colSpan={4} className="bg-dark border-success">
+                            <div className="p-2 border border-info rounded" style={{ marginLeft: '20px' }}>
+                              <strong className="text-info small">Opinia klienta: </strong>
+                              <span className="badge bg-info text-dark me-2">{order.opinions[0].rating}/5</span>
+                              <span className="small text-light fst-italic">"{order.opinions[0].content}"</span>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </>
                   ))}
                 </tbody>
               </table>
             </div>
           )}
+        </div>
+      </div>
+    );
+  }
+
+  function renderClientOrders() {
+    if (!auth) return renderLoginCard();
+
+    return (
+      <div className={CARD_CLASS}>
+        <div className={`${CARD_HEADER_CLASS} d-flex justify-content-between align-items-center`}>
+          <strong>Moje zamówienia</strong>
+          <button className="btn btn-sm btn-outline-success" onClick={loadUserOrders}>
+            Odśwież
+          </button>
+        </div>
+        <div className="card-body">
+          {loadingOrders && <div className="text-muted">Wczytywanie...</div>}
+          {!loadingOrders && myOrders.length === 0 && (
+            <p className="text-success">Nie masz jeszcze żadnych zamówień.</p>
+          )}
+          {myOrders.map(order => {
+            const canRate = [3, 4].includes(order.status_id);
+            const hasOpinion = order.opinions && order.opinions.length > 0;
+            const showForm = !!opinionForms[order.id];
+            const opinion = hasOpinion ? order.opinions![0] : null;
+
+            return (
+              <div key={order.id} className="border rounded p-3 mb-3 border-secondary">
+                <div className="d-flex justify-content-between">
+                  <div>
+                    <div className="fw-semibold text-success">Zamówienie #{order.id}</div>
+                    <div className="small text-light opacity-75">
+                      Status: <span className="text-white">{order.status_name || STATUS_LABELS[order.status_id]}</span>
+                    </div>
+                    <div className="small text-light opacity-75">
+                      Data: {order.created_at ? new Date(order.created_at).toLocaleDateString() : '—'}
+                    </div>
+                  </div>
+                  <div className="text-end text-success fw-bold">
+                    {formatCurrency(order.totalValue)}
+                  </div>
+                </div>
+
+                <ul className="list-group list-group-flush mt-2 mb-3">
+                  {order.items.map(item => (
+                    <li key={item.id} className="list-group-item bg-dark text-light border-secondary py-1 px-0">
+                      <small>{item.product_name} x {item.quantity}</small>
+                    </li>
+                  ))}
+                </ul>
+
+                {hasOpinion && opinion && (
+                  <div className="alert alert-success bg-opacity-10 border-success p-2">
+                    <strong>Twoja opinia:</strong> {opinion.rating}/5
+                    <div className="small fst-italic">{opinion.content}</div>
+                  </div>
+                )}
+
+                {!hasOpinion && canRate && !showForm && (
+                  <button className="btn btn-sm btn-outline-warning" onClick={() => toggleOpinionForm(order.id)}>
+                    Dodaj opinię
+                  </button>
+                )}
+
+                {showForm && (
+                  <div className="mt-2 p-2 border border-warning rounded">
+                    <h6 className="text-warning small">Twoja opinia</h6>
+                    <div className="mb-2">
+                      <label className="form-label small text-light">Ocena (1-5)</label>
+                      <select
+                        className="form-select form-select-sm bg-dark text-light border-warning"
+                        value={opinionForms[order.id]?.rating || 5}
+                        onChange={e => setOpinionForms(prev => ({ ...prev, [order.id]: { ...prev[order.id], rating: Number(e.target.value) } }))}
+                      >
+                        {[5, 4, 3, 2, 1].map(r => <option key={r} value={r}>{r}</option>)}
+                      </select>
+                    </div>
+                    <div className="mb-2">
+                      <label className="form-label small text-light">Treść</label>
+                      <textarea
+                        className="form-control form-control-sm bg-dark text-light border-warning"
+                        rows={2}
+                        value={opinionForms[order.id]?.content || ''}
+                        onChange={e => setOpinionForms(prev => ({ ...prev, [order.id]: { ...prev[order.id], content: e.target.value } }))}
+                      />
+                    </div>
+                    {opinionError && <p className="text-danger small">{opinionError}</p>}
+                    <div className="d-flex gap-2">
+                      <button className="btn btn-sm btn-warning" onClick={() => submitOpinion(order.id)}>Wyślij</button>
+                      <button className="btn btn-sm btn-outline-light" onClick={() => toggleOpinionForm(order.id)}>Anuluj</button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
     );
@@ -1119,6 +1312,20 @@ function App() {
           <div className="row g-4">
             <div className="col-lg-8">{renderOrdersByStatus()}</div>
             <div className="col-lg-4">{renderLoginCard()}</div>
+          </div>
+        )}
+
+        {view === 'my_orders' && (
+          <div className="row g-4">
+            <div className="col-lg-8">{renderClientOrders()}</div>
+            <div className="col-lg-4">
+              {renderLoginCard()}
+              <div className="mt-3">
+                <button className="btn btn-outline-secondary w-100" onClick={() => setView('catalog')}>
+                  Wróć do sklepu
+                </button>
+              </div>
+            </div>
           </div>
         )}
 

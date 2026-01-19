@@ -50,14 +50,7 @@ app.use('/products', (req, res, next) => {
 }, require('./api/products'));
 
 app.use('/products', require('./api/seo'));
-app.use('/orders', (req, res, next) => {
-  if (req.method === 'GET' || req.method === 'PATCH') {
-    return authenticateToken(req, res, () =>
-      requireRole('PRACOWNIK')(req, res, next)
-    );
-  }
-  return next();
-}, require('./api/orders'));
+app.use('/orders', require('./api/orders'));
 
 app.get('/migrate-d4', async (req, res) => {
   try {

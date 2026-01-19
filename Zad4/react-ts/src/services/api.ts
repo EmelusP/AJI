@@ -39,7 +39,14 @@ export interface OrderHeader {
   created_at?: string;
 }
 
-export type OrderDetails = OrderHeader & { items: OrderItem[] };
+export interface Opinion {
+  id: number;
+  rating: number;
+  content: string;
+  created_at: string;
+}
+
+export type OrderDetails = OrderHeader & { items: OrderItem[]; opinions?: Opinion[] };
 
 export interface OrderResponse {
   id: number;
@@ -113,6 +120,10 @@ export const api = {
   fetchOrderDetails: (token: string, id: number) => request<OrderDetails>(`/orders/${id}`, { token }),
   fetchOrdersByStatus: (token: string, statusId: number) =>
     request<OrderHeader[]>(`/orders/status/${statusId}`, { token }),
+  fetchUserOrders: (token: string, username: string) => request<OrderHeader[]>(`/orders/user/${username}`, { token }),
+
+  addOpinion: (token: string, orderId: number, rating: number, content: string) =>
+    request<{ success: boolean; order_id: number }>(`/orders/${orderId}/opinions`, {method: 'POST', data: { rating, content }, token}),
   login: (credentials: { username: string; password: string }) =>
     request<Tokens>('/login', { method: 'POST', data: credentials }),
   register: (payload: { username: string; password: string }) =>

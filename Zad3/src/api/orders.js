@@ -2,7 +2,7 @@ const express = require('express');
 const { getPool, sql } = require('../common/db');
 const { StatusCodes, sendError } = require('../common/http');
 const { idParamSchema, orderCreateSchema, orderStatusUpdateSchema } = require('../common/validation');
-const { authenticateToken } = require('../common/middleware');
+const { authenticateToken, requireRole } = require('../common/middleware');
 const { canTransition } = require('../common/statusTransitions');
 
 const router = express.Router();
@@ -27,7 +27,8 @@ async function fetchOrder(pool, id) {
   };
 }
 
-router.get('/', async (req, res) => {
+// LIST ALL: PRACOWNIK ONLY
+router.get('/', authenticateToken, requireRole('PRACOWNIK'), async (req, res) => {
   try {
     const pool = await getPool();
     const result = await pool.request().query(
@@ -41,22 +42,36 @@ router.get('/', async (req, res) => {
   }
 });
 
-router.get('/:id', async (req, res) => {
+// GET SINGLE: Authentication required. Owner or PRACOWNIK.
+router.get('/:id', authenticateToken, async (req, res) => {
   const { error, value } = idParamSchema.validate(req.params.id);
   if (error) return sendError(res, StatusCodes.BAD_REQUEST, 'Invalid order id');
   try {
     const pool = await getPool();
     const order = await fetchOrder(pool, value);
     if (!order) return sendError(res, StatusCodes.NOT_FOUND, 'Order not found');
+
+    // Authorization check
+    if (req.user.role !== 'PRACOWNIK' && req.user.username !== order.user_name) {
+      return sendError(res, StatusCodes.FORBIDDEN, 'Access denied');
+    }
+
     res.json(order);
   } catch (err) {
     sendError(res, StatusCodes.INTERNAL_SERVER_ERROR, 'Failed to fetch order', err.message);
   }
 });
 
-router.get('/user/:username', async (req, res) => {
+// GET USER ORDERS: Authentication required. Owner or PRACOWNIK.
+router.get('/user/:username', authenticateToken, async (req, res) => {
   const username = String(req.params.username || '').trim();
   if (!username) return sendError(res, StatusCodes.BAD_REQUEST, 'Username is required');
+
+  // Authorization check
+  if (req.user.role !== 'PRACOWNIK' && req.user.username !== username) {
+    return sendError(res, StatusCodes.FORBIDDEN, 'Access denied');
+  }
+
   try {
     const pool = await getPool();
     const result = await pool.request().input('username', sql.NVarChar(255), username)
@@ -69,7 +84,8 @@ router.get('/user/:username', async (req, res) => {
   }
 });
 
-router.get('/status/:statusId', async (req, res) => {
+// GET BY STATUS: PRACOWNIK ONLY
+router.get('/status/:statusId', authenticateToken, requireRole('PRACOWNIK'), async (req, res) => {
   const { error, value } = idParamSchema.validate(req.params.statusId);
   if (error) return sendError(res, StatusCodes.BAD_REQUEST, 'Invalid status id');
   try {
@@ -145,7 +161,8 @@ router.post('/', async (req, res) => {
   }
 });
 
-router.patch('/:id', async (req, res) => {
+// UPDATE STATUS: PRACOWNIK ONLY
+router.patch('/:id', authenticateToken, requireRole('PRACOWNIK'), async (req, res) => {
   const idCheck = idParamSchema.validate(req.params.id);
   if (idCheck.error) return sendError(res, StatusCodes.BAD_REQUEST, 'Invalid order id');
   const bodyCheck = orderStatusUpdateSchema.validate(req.body);
