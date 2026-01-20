@@ -122,7 +122,6 @@ function App() {
   const [loadingOrders, setLoadingOrders] = useState(false);
 
   const [myOrders, setMyOrders] = useState<Array<OrderDetails & { totalValue: number }>>([]);
-  // opinionsForm maps orderId -> form state
   const [opinionForms, setOpinionForms] = useState<Record<number, { rating: number; content: string }>>({});
   const [opinionError, setOpinionError] = useState('');
 
@@ -544,9 +543,7 @@ function App() {
     try {
       const { rating, content } = opinionForms[orderId];
       await api.addOpinion(auth.accessToken, orderId, rating, content);
-      // Refresh orders to show the new opinion
       await loadUserOrders();
-      // Clear form
       setOpinionForms(prev => {
         const copy = { ...prev };
         delete copy[orderId];
