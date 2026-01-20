@@ -32,11 +32,11 @@ interface AuthState extends Tokens {
 const VIEWS: Record<View, string> = {
   catalog: 'Katalog',
   checkout: 'Składanie zamówienia',
+  my_orders: 'Moje zamówienia',
   admin: 'Panel pracownika',
   statuses: 'Zamówienia wg statusu',
-  auth: 'Logowanie',
-  my_orders: 'Moje zamówienia',
   init: 'Inicjalizacja Bazy',
+  auth: 'Logowanie',
 };
 
 const STATUS_LABELS: Record<number, string> = {
@@ -147,14 +147,6 @@ function App() {
   }, [view, auth]);
 
   useEffect(() => {
-    if (view === 'init' && !isStaff) {
-      setAuthMessage('Inicjalizacja bazy dostępna tylko dla pracownika.');
-      setPendingSecureView('init');
-      setView('auth');
-    }
-  }, [view, auth, isStaff]);
-
-  useEffect(() => {
     if (view === 'statuses' && auth && statusFilter) {
       loadOrdersByStatus(statusFilter);
     }
@@ -214,7 +206,7 @@ function App() {
   }
 
   function handleViewChange(target: View) {
-    if ((target === 'admin' || target === 'statuses') && !isStaff) {
+    if ((target === 'admin' || target === 'statuses' || target === 'init') && !isStaff) {
       setAuthMessage('Zaloguj się jako pracownik, aby korzystać z tej sekcji.');
       setPendingSecureView(target);
       setView('auth');
